@@ -15,4 +15,5 @@ It can be run using Conda:
     conda create -n tgp python==2.7
     conda activate tgp
     easy_install networkx==0.37
-    python rewedge.py
+    python rewedge.py data/*.cm
+
