@@ -1,5 +1,5 @@
 """
-An implementation of NetworkX's XGraph with weighted edges.
+An implementation of NetworkX's Graph with weighted edges.
 Edges have the special property that they are considered to
 not exist when their weight is nonpositive. This
 applies only to the methods
@@ -28,33 +28,54 @@ those use:
 - neighbors, which uses neighbors_iter, which uses edges_iter
 """
 
-from networkx import XGraph, NetworkXError
+from networkx import NetworkXError
 
-class WeightedGraph(XGraph):
+try:
+	from networkx import XGraph as Graph  # 0.37
+	old_nx = True
+except ImportError:
+	old_nx = False
+	from networkx import Graph  # 0.99
+
+
+class WeightedGraph(Graph):
 	def __init__(self, data=None, **kwds):
 		"""Initialize WeightedGraph.
-		For the data parameter, see XGraph.__init__.
+		For the data parameter, see Graph.__init__.
 		"""
 		if kwds.get("selfloops", False) or kwds.get("multiedges", False):
 			# before this is enabled, someone needs to think about whether it works
 			raise NetworkXError, "neither selfloops nor multiedges may be set"
 
-		XGraph.__init__(self, data, **kwds)
+		Graph.__init__(self, data, **kwds)
 
 	def neighbors_iter(self, n):
-		for v,w in self.adj[n].iteritems():
+		for v, w in self.adj[n].iteritems():
 			if w > 0.0:
 				yield v
 
-	def edges_iter(self, nbunch=None):
+	def __getitem__(self, key):
+		"Used by connected_components (indirectly)"
+		adj = self.adj[key]
+		return {n: w for n, w in adj.items() if w > 0.0}
+
+	def edges_iter(self, nbunch=None, data=None):
 		"""
 		Returns iterator over those edges adjacent to nodes in nbunch that have
 		nonnegative weight.
 		If nbunch is None, iterates over all nonnegative-weight edges.
 		"""
-		for u,v,w in XGraph.edges_iter(self, nbunch):
-			if w > 0.0:
-				yield (u,v,w)
+		if old_nx:
+			for u, v, w in Graph.edges_iter(self, nbunch):
+				if w > 0.0:
+					yield (u,v,w)
+		else:
+			for u, v, w in Graph.edges_iter(self, nbunch, data=True):
+				if w > 0.0:
+					if data:
+						yield (u,v,w)
+					else:
+						 yield (u, v)
 
 	def all_edges(self, nbunch=None):
 		"""
@@ -62,7 +83,7 @@ class WeightedGraph(XGraph):
 		"""
 		return list(self.all_edges_iter(nbunch))
 
-	all_edges_iter = XGraph.edges_iter
+	all_edges_iter = Graph.edges_iter
 
 	def number_of_edges(self):
 		c = 0
@@ -70,7 +91,7 @@ class WeightedGraph(XGraph):
 			c += sum(1 for v,w in d.iteritems() if w > 0.0)
 		return c/2
 
-	number_of_all_edges = XGraph.number_of_edges
+	number_of_all_edges = Graph.number_of_edges
 
 	def copy(self):
 		"""Returns copy of the graph"""
@@ -80,8 +101,12 @@ class WeightedGraph(XGraph):
 			graph.dna = self.dna.copy()
 		for n in self:
 			graph.add_node(n)
-		for e in self.all_edges_iter():
-			graph.add_edge(e)
+		if old_nx:
+			for e in self.all_edges_iter():
+				graph.add_edge(e)
+		else:
+			for u, v, w in self.all_edges_iter():
+				graph.add_edge(u, v, w)
 		return graph
 
 class CompleteGraph(WeightedGraph):
@@ -91,7 +116,7 @@ class CompleteGraph(WeightedGraph):
 		WeightedGraph.__init__(self, data, **kwds)
 
 	def get_edge(self, u, v=None):
-		# copied from XGraph
+		# copied from Graph
 		try:
 			return self.adj[u][v]    # raises KeyError if edge not found
 		except KeyError:
@@ -104,15 +129,37 @@ class CompleteGraph(WeightedGraph):
 			graph.dna = self.dna.copy()
 		for n in self:
 			graph.add_node(n)
-		for e in self.all_edges_iter():
-			graph.add_edge(e)
+		if old_nx:
+			for e in self.all_edges_iter():
+				graph.add_edge(e)
+		else:
+			for u, v, w in self.all_edges_iter(data=True):
+				graph.add_edge(u, v, w)
 		return graph
 
 	def subgraph(self, nbunch, inplace=False, create_using=None):
+		assert not inplace
 		g = None
-		if create_using is None:
-			g = self.__class__(
-					self.missingweight,
-					multiedges=self.multiedges,
-					selfloops=self.selfloops)
-		return WeightedGraph.subgraph(self, nbunch, inplace, create_using=g)
+		if old_nx:
+			if create_using is None:
+				g = self.__class__(
+						self.missingweight,
+						multiedges=self.multiedges,
+						selfloops=self.selfloops)
+			return WeightedGraph.subgraph(self, nbunch, inplace, create_using=g)
+		else:
+			assert not create_using
+			# Copied from NetworkX
+			bunch = set(self.nbunch_iter(nbunch))
+			# create new graph and copy subgraph into it
+			H = WeightedGraph()
+			H.name = "Subgraph of (%s)"%(self.name)
+			# add edges
+			H_adj = H.adj # cache
+			self_adj = self.adj # cache
+			for n in bunch:
+				H_adj[n] = dict( ((u,d) for u,d in self_adj[n].iteritems()
+								if u in bunch) )
+
+			cg = CompleteGraph(self.missingweight, data=H)
+			return cg
