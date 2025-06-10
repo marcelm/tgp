@@ -4,16 +4,12 @@ from graphread import read_cm
 from graphalgo import cached_wtp, weighted_closure_cost_connected, weighted_closure_cost
 from weightedgraph import CompleteGraph
 
-old_nx = hasattr(nx, "XGraph")
 
 def test_read_cm_95():
     with open("data/component_0095_size_3_cutoff_1.0E-10.cm") as f:
         g = read_cm(f)
     assert g.nodes() == [0, 1, 2]
-    if old_nx:
-        edges = g.edges()
-    else:
-        edges = g.edges(data=True)
+    edges = g.edges(data=True)
     assert edges == [(1, 2, 2.6575775146484375)]
 
 
@@ -21,10 +17,7 @@ def test_read_cm_99():
     with open("data/component_0099_size_5_cutoff_1.0E-10.cm") as f:
         g = read_cm(f)
     assert g.nodes() == [0, 1, 2, 3, 4]
-    if old_nx:
-        edges = g.edges()
-    else:
-        edges = g.edges(data=True)
+    edges = g.edges(data=True)
     assert edges == [(0, 2, 18.602060317993164), (0, 3, 8.040958404541016), (0, 4, 1.886056900024414), (1, 2, 5.9586076736450195), (1, 3, 4.7695512771606445), (2, 3, 36.10237121582031), (2, 4, 10.244125366210938), (3, 4, 14.886056900024414)]
 
 

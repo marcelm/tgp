@@ -8,12 +8,7 @@ import sys
 #from heapq import heappush, heappop, heapreplace
 from bisect import bisect_left, bisect_right
 
-try:
-	from networkx import XGraph as Graph
-	old_nx = True
-except ImportError:
-	from networkx import Graph
-	old_nx = False
+from networkx import Graph
 
 import gray
 import bitsgen
@@ -257,10 +252,7 @@ def weighted_closure_cost_connected(graph):
 
 	# iterate over *all* edges, add up all those with negative weight
 
-	if old_nx:
-		cost = -sum(w for u,v,w in graph.all_edges_iter() if w < 0.0)
-	else:
-		cost = -sum(w for u,v,w in graph.all_edges_iter(data=True) if w < 0.0)
+	cost = -sum(w for u,v,w in graph.all_edges_iter(data=True) if w < 0.0)
 	assert cost >= 0.0
 
 	if type(graph) is CompleteGraph:
@@ -776,10 +768,7 @@ class DftGraph(object):
 			self._best_edge = None
 			self._best_ti = None
 		else:
-			if old_nx:
-				best_ti, best_u, best_v = max((w, u, v) for u, v, w in self.tigraph.edges_iter())
-			else:
-				best_ti, best_u, best_v = max((w, u, v) for u, v, w in self.tigraph.edges_iter(data=True))
+			best_ti, best_u, best_v = max((w, u, v) for u, v, w in self.tigraph.edges_iter(data=True))
 			self._best_edge = best_u, best_v
 			self._best_ti = best_ti
 
