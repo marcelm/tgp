@@ -15,6 +15,10 @@ It can be run using Conda:
 
     conda create -n tgp python==2.7
     conda activate tgp
-    easy_install networkx==0.37
+    easy_install networkx==0.99
     python rewedge.py data/*.cm
 
+Run the tests:
+
+    easy_install pytest==3.0.0
+    pytest
